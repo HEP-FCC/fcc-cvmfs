@@ -11,6 +11,9 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_default_version="$(awk -F': *' '/^rucio_version:/{gsub(/["'"'"']/, "", $2); print $2}' "$SCRIPT_DIR/../config.yaml")"
+
 # Parse options
 FORCE=false
 while [[ $# -gt 0 ]]; do
@@ -27,7 +30,7 @@ done
 
 TOKEN="${1:-${TOKEN:-}}"
 ID="${2:-${ID:-}}"
-RUCIO_VERSION="${3:-${RUCIO_VERSION:-38.3.0}}"
+RUCIO_VERSION="${3:-${RUCIO_VERSION:-$_default_version}}"
 
 if [[ -z "$TOKEN" || -z "$ID" ]]; then
   echo "Error: TOKEN and ID must be provided either as arguments or environment variables."

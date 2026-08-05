@@ -2,33 +2,25 @@
 
 Builds a self-contained `rucio-clients` tarball for deployment on CVMFS.
 
+Based on the original implementation from [vre-hub/escape-cvmfs](https://github.com/vre-hub/escape-cvmfs/tree/main).
+
 ## Build
 
 ### Prerequisites
 
-1. Install system build dependencies:
+1. Install Python 3.x and `rsync`:
 
 ```bash
 # RHEL/Alma/Rocky
-dnf install make gcc patch zlib-devel bzip2 bzip2-devel readline-devel \
-  sqlite sqlite-devel openssl-devel tk-devel libffi-devel xz-devel \
-  libuuid-devel gdbm-libs libnsl2 rsync
+dnf install python3 rsync
 
 # Debian/Ubuntu
-apt-get install make gcc zlib1g-dev libbz2-dev libreadline-dev \
-  libsqlite3-dev libssl-dev tk-dev libffi-dev liblzma-dev uuid-dev \
-  libgdbm-dev libnsl-dev git curl rsync unzip
-```
-
-2. Install [pyenv](https://github.com/pyenv/pyenv?tab=readme-ov-file#automatic-installer):
-
-```bash
-curl https://pyenv.run | bash
+apt-get install python3 rsync
 ```
 
 ### Build the tarball
 
-Build with the default version (38.3.0):
+The default version is set in `config.yaml`. Build with it:
 
 ```bash
 ./make_tarball.sh
@@ -46,7 +38,7 @@ Or via environment variable:
 RUCIO_VERSION=35.8.0 ./make_tarball.sh
 ```
 
-The script will install Python 3.11.9 and 3.12.2 via pyenv, create virtualenvs, and produce `rucio-clients-<VERSION>.tar.gz`.
+The script creates a venv, installs `rucio-clients`, and produces `rucio-clients-<VERSION>.tar.gz`.
 
 ### CI
 
