@@ -25,29 +25,38 @@ if [ -z "$RUCIO_HOME" ]; then
     echo "INFO: Set RUCIO_HOME to $RUCIO_HOME"
 fi
 
-# Set python binary, default to 'python3' if not set
-export RUCIO_PYTHONBIN="${RUCIO_PYTHONBIN:-python3}"
+# Detect Python binary: respect RUCIO_PYTHONBIN if set, otherwise try python3 then python
+if [ -z "${RUCIO_PYTHONBIN:-}" ]; then
+    if command -v python3 >/dev/null 2>&1; then
+        export RUCIO_PYTHONBIN="python3"
+    elif command -v python >/dev/null 2>&1; then
+        export RUCIO_PYTHONBIN="python"
+    else
+        echo "ERROR: No Python installation found in PATH. Please install Python >= 3.9."
+        return 64
+    fi
+fi
 
-# Verify that the Python binary exists and is usable
 if ! command -v "$RUCIO_PYTHONBIN" >/dev/null 2>&1; then
     echo "ERROR: Python binary '$RUCIO_PYTHONBIN' not found in PATH."
     return 64
 fi
 
-# Ensure Python version is >= 3.9
-version=$($RUCIO_PYTHONBIN -c 'import sys; print("%d%02d" % sys.version_info[:2])')
-if [ "$version" -lt 309 ]; then
-    echo "ERROR: Python version must be >= 3.9 (found $($RUCIO_PYTHONBIN -V 2>&1))"
+# Check Python meets the minimum version required by rucio-clients
+min_ver=$(cat "$RUCIO_HOME/python-requires" 2>/dev/null || echo "3.9")
+if ! "$RUCIO_PYTHONBIN" -c "
+import sys
+min = tuple(int(x) for x in '$min_ver'.split('.'))
+sys.exit(0 if sys.version_info >= min else 1)
+" 2>/dev/null; then
+    echo "ERROR: $($RUCIO_PYTHONBIN -V 2>&1) does not meet the minimum requirement >= $min_ver"
     return 64
 fi
 
-# Determine major.minor Python version
-pyver=$($RUCIO_PYTHONBIN -c 'import sys; print("{}.{}".format(sys.version_info[0], sys.version_info[1]))')
-
-# Find the correct site-packages path
-sitepkgs=$(find "$RUCIO_HOME/lib" -mindepth 2 -maxdepth 2 -name site-packages | grep "python$pyver")
+# Find site-packages — version-independent since rucio-clients is pure Python
+sitepkgs=$(find "$RUCIO_HOME/lib" -mindepth 2 -maxdepth 2 -name site-packages | head -1)
 if [ -z "$sitepkgs" ]; then
-    echo "ERROR: Could not locate site-packages directory for Python $pyver in $RUCIO_HOME/lib"
+    echo "ERROR: Could not locate site-packages in $RUCIO_HOME/lib. The installation may be corrupt."
     return 64
 fi
 

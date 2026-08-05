@@ -55,6 +55,15 @@ echo "Installing dependencies"
 "$ENV_PATH/bin/pip" install argcomplete
 "$ENV_PATH/bin/pip" freeze
 
+echo "Extracting Python version requirement"
+"$ENV_PATH/bin/python" -c "
+import importlib.metadata, re
+req = importlib.metadata.metadata('rucio-clients').get('Requires-Python', '')
+m = re.search(r'>=\s*(\d+\.\d+)', req)
+print(m.group(1) if m else '3.9')
+" > python-requires
+echo " - Requires-Python: $(cat python-requires)"
+
 echo "Consolidating site-packages"
 LIB_ROOT="${ENV_PATH}/lib/python${PY_MM}"
 
