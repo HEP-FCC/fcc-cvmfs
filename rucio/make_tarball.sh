@@ -105,6 +105,9 @@ done
 echo "General: Copying setup scripts"
 cp -R "$SCRIPT_DIR"/common/setup_scripts/setup* .
 
+echo "General: Copying config"
+cp "$SCRIPT_DIR/rucio-fcc.cfg" .
+
 echo "General: Creating archive"
 tar zcf "$SCRIPT_DIR/rucio-clients-${RUCIO_VERSION}.tar.gz" *
 echo " - $(ls -la "$SCRIPT_DIR/rucio-clients-${RUCIO_VERSION}.tar.gz")"

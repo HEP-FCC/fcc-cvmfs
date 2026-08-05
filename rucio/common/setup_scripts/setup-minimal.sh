@@ -64,4 +64,7 @@ if [ "$shell_type" = "bash" ]; then
     eval "$(register-python-argcomplete rucio-admin 2>/dev/null)"
 fi
 
+export RUCIO_ACCOUNT="${RUCIO_ACCOUNT:-$(whoami)}"
+export RUCIO_CONFIG="${RUCIO_CONFIG:-$RUCIO_HOME/rucio-fcc.cfg}"
+
 echo "INFO: Rucio client environment is set up."

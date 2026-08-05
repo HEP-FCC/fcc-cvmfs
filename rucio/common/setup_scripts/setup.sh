@@ -138,57 +138,16 @@ if [ "$donkey_shell" = "bash" ]; then
     eval "$(register-python-argcomplete rucio-admin)"
 fi
 
-if [[ -z $RUCIO_AUTH_TYPE ]]; then
-   export RUCIO_AUTH_TYPE="x509_proxy"
-   if [ $donkey_deb -gt 0 ]; then
-       \echo "INFO: \t  Set RUCIO_AUTH_TYPE to x509_proxy"
-   fi
+export RUCIO_ACCOUNT="${RUCIO_ACCOUNT:-$(whoami)}"
+if [ $donkey_deb -gt 0 ]; then
+    \echo "INFO: \t  Set RUCIO_ACCOUNT to $RUCIO_ACCOUNT"
 fi
 
-if [[ -z $X509_USER_PROXY ]]; then
-   export X509_USER_PROXY="/tmp/x509up_u$(id -u)"
+export RUCIO_CONFIG="${RUCIO_CONFIG:-$RUCIO_HOME/rucio-fcc.cfg}"
+if [ $donkey_deb -gt 0 ]; then
+    \echo "INFO: \t  Set RUCIO_CONFIG to $RUCIO_CONFIG"
 fi
 
-if [[ -z $RUCIO_ACCOUNT ]]; then
-    donkey_account=` sh -c 'voms-proxy-info --all 2>/dev/null'| \grep -e 'attribute : nickname =' | \awk '{print $5}'`
-    if [ -z "$donkey_account" ]; then
-        donkey_counter=0
-        while true; do
-            donkey_yn=
-            if [ "$donkey_shell" = "zsh" ]; then
-                vared -p "Do you want to set the RUCIO_ACCOUNT to $USER (y/n)?" donkey_yn 
-            else
-                read -p "Do you want to set the RUCIO_ACCOUNT to $USER (y/n)?" donkey_yn
-            fi
-            case $donkey_yn in
-                [Yy]* )  export RUCIO_ACCOUNT=$USER; \echo 'To avoid this question, you should set the environment variable RUCIO_ACCOUNT or have a valid grid proxy'; break;;
-                [Nn]* )
-                    if [ "$donkey_shell" = "zsh" ]; then
-                        donkey_account=;  vared -p "Please enter the Rucio account you want to use: " donkey_account; export RUCIO_ACCOUNT=$donkey_account
-                    else
-                        read -p "Please enter the Rucio account you want to use: " donkey_account; export RUCIO_ACCOUNT=$donkey_account
-                    fi;
-                    break;;
-                * ) \echo "Please answer yes or no.";;
-            esac
-            donkey_counter=`expr $donkey_counter + 1`
-            if [ "$donkey_counter" -eq 3 ]; then
-                if [ $donkey_deb -gt 0 ]; then
-                    \echo "INFO: \t  Max. tries reached."
-                fi
-                export RUCIO_ACCOUNT=$USER
-                break;
-            fi            
-        done
-    else
-        export RUCIO_ACCOUNT=$donkey_account
-    fi
-    
-    if [ $donkey_deb -gt 0 ]; then
-        \echo "INFO: \t  Set RUCIO_ACCOUNT to $RUCIO_ACCOUNT"
-    fi
-fi
-
-unset donkey_tmpVal donkey_shell donkey_deb donkey_glv donkey_slcVer donkey_thisPythonVersion thisPythonVersionInt donkey_thisPyVer donkey_thisPythonVersionMajor donkey_thisPythonVersionMinor donkey_rucioPyPath donkey_counter donkey_account donkey_yn
+unset donkey_tmpVal donkey_shell donkey_deb donkey_glv donkey_slcVer donkey_thisPythonVersion thisPythonVersionInt donkey_thisPyVer donkey_thisPythonVersionMajor donkey_thisPythonVersionMinor donkey_rucioPyPath
 
 return 0
