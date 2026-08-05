@@ -62,5 +62,5 @@ After deployment, users source the setup script:
 
 ```bash
 export RUCIO_HOME=/cvmfs/fcc.cern.ch/rucio/38.3.0
-source $RUCIO_HOME/setup-minimal.sh
+source $RUCIO_HOME/setup.sh
 ```
