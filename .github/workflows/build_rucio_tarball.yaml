@@ -28,13 +28,24 @@ jobs:
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y rsync
 
+      - name: Resolve Rucio version
+        id: version
+        run: |
+          input="${{ github.event.inputs.rucio_version }}"
+          if [ -n "$input" ]; then
+            echo "rucio_version=$input" >> $GITHUB_OUTPUT
+          else
+            version=$(grep '^rucio_version:' rucio/config.yaml | awk -F': *' '{gsub(/["'"'"']/, "", $2); print $2}')
+            echo "rucio_version=$version" >> $GITHUB_OUTPUT
+          fi
+
       - name: Run build
         run: |
           chmod +x ./rucio/make_tarball.sh
-          ./rucio/make_tarball.sh ${{ github.event.inputs.rucio_version }}
+          ./rucio/make_tarball.sh ${{ steps.version.outputs.rucio_version }}
 
       - name: Upload tarball artifact
         uses: actions/upload-artifact@v7
         with:
-          name: rucio-clients
+          name: rucio-clients-${{ steps.version.outputs.rucio_version }}
           path: rucio/rucio-clients-*.tar.gz
