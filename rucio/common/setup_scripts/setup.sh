@@ -77,3 +77,4 @@ export RUCIO_ACCOUNT="${RUCIO_ACCOUNT:-$(whoami)}"
 export RUCIO_CONFIG="${RUCIO_CONFIG:-$RUCIO_HOME/rucio-fcc.cfg}"
 
 echo "INFO: Rucio client environment is set up."
+echo "INFO: RUCIO_ACCOUNT is set to '$RUCIO_ACCOUNT'."
