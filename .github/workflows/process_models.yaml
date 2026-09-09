@@ -1,0 +1,130 @@
+name: Process FCC Models
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'fcc_models/*.yml'
+
+jobs:
+  process-models:
+    # Skip commits made by the bot itself (summary updates + file deletions)
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # needed to push the updated summary files back
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: pip install pyyaml
+
+      - name: Find changed submission files
+        id: changed
+        run: |
+          BASE=${{ github.event.before }}
+          HEAD=${{ github.sha }}
+
+          # yml files added or modified in fcc_models/ that are not summary files
+          FILES=$(git diff --name-only --diff-filter=AM "$BASE" "$HEAD" -- 'fcc_models/*.yml' \
+                  | grep -v 'fcc_models/summary_' || true)
+
+          if [ -z "$FILES" ]; then
+            echo "No submission files changed. Nothing to do."
+            echo "submission_files=" >> $GITHUB_OUTPUT
+          else
+            echo "Changed submission files:"
+            echo "$FILES"
+            FILES_SPACE=$(echo "$FILES" | tr '\n' ' ')
+            echo "submission_files=$FILES_SPACE" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Look up associated PR
+        id: pr
+        if: steps.changed.outputs.submission_files != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_NUMBER=$(gh api "repos/${{ github.repository }}/commits/${{ github.sha }}/pulls" \
+            --jq '.[0].number // ""' 2>/dev/null || echo "")
+          echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          if [ -n "$PR_NUMBER" ]; then
+            echo "artifact_name=fcc-models-pr-$PR_NUMBER" >> $GITHUB_OUTPUT
+          else
+            echo "artifact_name=fcc-models-${{ github.sha }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Prepare artifact directory
+        if: steps.changed.outputs.submission_files != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/model-artifact
+          # Fetch PR body and write as pr.txt (Python handles multi-line content safely)
+          gh api "repos/${{ github.repository }}/commits/${{ github.sha }}/pulls" \
+            > /tmp/pr_data.json 2>/dev/null || echo "[]" > /tmp/pr_data.json
+          python3 -c "
+          import json
+          with open('/tmp/pr_data.json') as f:
+              prs = json.load(f)
+          body = prs[0].get('body', '') if prs else ''
+          with open('/tmp/model-artifact/pr.txt', 'w') as f:
+              f.write(body or '')
+          "
+
+      - name: Validate and update summaries
+        if: steps.changed.outputs.submission_files != ''
+        run: |
+          python .github/scripts/process_models.py \
+            --models-dir fcc_models \
+            --artifact-dir /tmp/model-artifact \
+            ${{ steps.changed.outputs.submission_files }}
+
+      - name: Print artifact contents
+        if: steps.changed.outputs.submission_files != ''
+        run: |
+          echo "=== Artifact files ==="
+          ls -l /tmp/model-artifact/
+          echo ""
+          for f in /tmp/model-artifact/*.yml /tmp/model-artifact/pr.txt; do
+            [ -f "$f" ] || continue
+            echo "=== $f ==="
+            cat "$f"
+            echo ""
+          done
+
+      - name: Commit summary updates and remove submission files
+        if: steps.changed.outputs.submission_files != ''
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Stage new/updated summaries and submission file deletions
+          git add fcc_models/
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            COMMIT_MSG="chore: process model submissions"
+            PR_NUM="${{ steps.pr.outputs.number }}"
+            [ -n "$PR_NUM" ] && COMMIT_MSG="$COMMIT_MSG from PR #$PR_NUM"
+            git commit -m "$COMMIT_MSG"
+            git push
+          fi
+
+      - name: Upload model artifact
+        if: steps.changed.outputs.submission_files != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.pr.outputs.artifact_name }}
+          path: /tmp/model-artifact/
+          if-no-files-found: error
