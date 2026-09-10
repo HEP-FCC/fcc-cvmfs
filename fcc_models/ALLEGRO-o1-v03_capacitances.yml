@@ -1,0 +1,5 @@
+packages:
+  - package: ALLEGRO-o1-v03_capacitances
+    version: "1.0"
+    source-location:
+      - https://fccsw.web.cern.ch/fccsw/filesForSimDigiReco/ALLEGRO/ALLEGRO_o1_v03/capacitances_ecalBarrelFCCee_theta.root
