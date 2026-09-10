@@ -1,0 +1,6 @@
+packages:
+  - package: ALLEGRO-o1-v03_lgbm
+    version: "1.0"
+    source-location:
+      - https://fccsw.web.cern.ch/fccsw/filesForSimDigiReco/ALLEGRO/ALLEGRO_o1_v03/lgbm_calibration-CaloClusters.onnx
+      - https://fccsw.web.cern.ch/fccsw/filesForSimDigiReco/ALLEGRO/ALLEGRO_o1_v03/lgbm_calibration-CaloTopoClusters.onnx
