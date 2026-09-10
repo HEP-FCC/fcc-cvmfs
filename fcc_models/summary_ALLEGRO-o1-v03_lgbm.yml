@@ -1,0 +1,10 @@
+package: ALLEGRO-o1-v03_lgbm
+versions:
+- version: '1.0'
+  source-location:
+  - https://fccsw.web.cern.ch/fccsw/filesForSimDigiReco/ALLEGRO/ALLEGRO_o1_v03/lgbm_calibration-CaloClusters.onnx
+  - https://fccsw.web.cern.ch/fccsw/filesForSimDigiReco/ALLEGRO/ALLEGRO_o1_v03/lgbm_calibration-CaloTopoClusters.onnx
+  sha256:
+  - a024b707d93be2e8a1c11d685749adfe855d7be9732ae3de47318fbf588206c1
+  - 9e5f140cd9609e81b911448e5bac1c14da492a487859cc183f86a77cac441a76
+  added: '2026-09-10T19:08:59+00:00'
