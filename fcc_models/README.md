@@ -49,6 +49,16 @@ Open a pull request. A workflow will automatically validate your submission and 
 4. Your submission file is deleted — the summary becomes the permanent record.
 5. A GitHub Actions artifact is uploaded containing the resolved submission YAML (with `sha256` and `added` filled in), the downloaded source files, and `pr.txt`.
 
+## Adding a new version of an existing package
+
+Use `new_version.py` to avoid writing the YAML by hand:
+
+```bash
+python fcc_models/new_version.py <package> <new-version>
+```
+
+This copies the source URLs from the most recent version in the summary file and appends a new entry. The workflow fills in the checksums and timestamp on merge. Commit `fcc_models/summary_<package>.yml` and open a PR.
+
 ## Summary files
 
-`summary_<package>.yml` files are maintained automatically. Do not edit them by hand. Each version entry records `source-location`, `sha256` (mirroring the structure of `source-location` — a string for a single file, a list for multiple), and `added` (UTC datetime of download).
+`summary_<package>.yml` files are the permanent record of what is on CVMFS. They are append-only: existing version entries must never be modified or removed. New versions may be added via PR (using `new_version.py` or by editing the file directly). Each version entry records `source-location`, `sha256` (mirroring the structure of `source-location` — a string for a single file, a list for multiple), and `added` (UTC datetime of download).

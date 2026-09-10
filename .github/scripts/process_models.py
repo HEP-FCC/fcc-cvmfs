@@ -16,6 +16,7 @@ Exit codes:
 
 import sys
 import os
+import subprocess
 import datetime
 import hashlib
 import json
@@ -228,12 +229,159 @@ def process_file(models_dir, submission_file, dry_run, artifact_dir=None):
     return True, messages, updated_summaries
 
 
+def _git_show(ref, path):
+    """Return file content at a git ref, or None if not found."""
+    result = subprocess.run(
+        ["git", "show", f"{ref}:{path}"],
+        capture_output=True, text=True,
+    )
+    return result.stdout if result.returncode == 0 else None
+
+
+def process_summary_file(models_dir, summary_file, dry_run, artifact_dir=None, base_ref=None):
+    """
+    Handle a directly-edited summary file.
+
+    Rules:
+    - Existing version entries must not be modified or removed (append-only).
+    - New version entries are downloaded, checksummed, and written to artifact_dir.
+
+    Returns (ok: bool, messages: list[str], updated_summaries: list[str])
+    """
+    current = load_yaml(summary_file)
+    if not isinstance(current, dict) or "versions" not in current:
+        return False, [f"{summary_file}: must have a top-level 'versions' list"], []
+
+    package = current.get("package", "")
+    expected = os.path.basename(summary_file)[len("summary_"):-len(".yml")]
+    if package != expected:
+        return False, [
+            f"{summary_file}: 'package' field {package!r} does not match filename (expected {expected!r})"
+        ], []
+
+    current_versions = current.get("versions", [])
+    current_by_ver = {str(v["version"]): v for v in current_versions}
+
+    # Determine old state from base_ref
+    old_versions = []
+    if base_ref:
+        old_text = _git_show(base_ref, summary_file)
+        if old_text:
+            old_data = yaml.safe_load(old_text) or {}
+            old_versions = old_data.get("versions", [])
+    old_by_ver = {str(v["version"]): v for v in old_versions}
+
+    # Immutability check: existing entries must be unchanged
+    errors = []
+    for ver_str, old_entry in old_by_ver.items():
+        if ver_str not in current_by_ver:
+            errors.append(
+                f"{summary_file}: existing version {ver_str!r} was removed — "
+                "summary files are append-only"
+            )
+        elif current_by_ver[ver_str] != old_entry:
+            errors.append(
+                f"{summary_file}: existing version {ver_str!r} was modified — "
+                "summary files are append-only"
+            )
+    if errors:
+        return False, errors, []
+
+    # Find new version entries
+    new_entries = [v for v in current_versions if str(v["version"]) not in old_by_ver]
+    if not new_entries:
+        return True, [f"{summary_file}: no new versions found (nothing to do)"], []
+
+    # Validate new entries
+    for ve in new_entries:
+        synthetic = {
+            "package": package,
+            "version": ve.get("version", ""),
+            "source-location": ve.get("source-location", ""),
+        }
+        for k in ("directory", "readme"):
+            if k in ve:
+                synthetic[k] = ve[k]
+        err = validate_entry(synthetic, summary_file)
+        if err:
+            errors.append(err)
+    if errors:
+        return False, errors, []
+
+    messages = []
+
+    if dry_run:
+        for ve in new_entries:
+            sources = normalize_sources({"source-location": ve["source-location"]})
+            src_display = sources[0] if len(sources) == 1 else f"{len(sources)} files"
+            messages.append(f"  OK (new): {package} v{ve['version']} ({src_display})")
+        return True, messages, []
+
+    # Download files and fill in sha256 + added
+    if artifact_dir:
+        os.makedirs(artifact_dir, exist_ok=True)
+    dl_dir = artifact_dir or os.path.join(os.path.dirname(summary_file), ".dl_tmp")
+    os.makedirs(dl_dir, exist_ok=True)
+
+    url_checksums = {}
+    added = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
+
+    for ve in new_entries:
+        subdir = ve.get("directory", "").lstrip("/")
+        dest_dir = os.path.join(dl_dir, subdir) if subdir else dl_dir
+        os.makedirs(dest_dir, exist_ok=True)
+        for url in normalize_sources({"source-location": ve["source-location"]}):
+            if url in url_checksums:
+                continue
+            try:
+                _, chksum = download_file(url, dest_dir)
+                url_checksums[url] = chksum
+                messages.append(f"  downloaded {url} (sha256: {chksum[:12]}…)")
+            except urllib.error.URLError as exc:
+                return False, messages + [f"  failed to download {url}: {exc}"], []
+
+        src = ve["source-location"]
+        if isinstance(src, str):
+            ve["sha256"] = url_checksums[src]
+        else:
+            ve["sha256"] = [url_checksums[u] for u in src]
+        ve["added"] = added
+        messages.append(f"  filled in sha256/added for {package} v{ve['version']}")
+
+    # Write updated summary file (with sha256 + added filled in)
+    with open(summary_file, "w") as f:
+        yaml.dump(current, f, default_flow_style=False, sort_keys=False)
+
+    # Write artifact JSON for the consumer (same format as submission-flow JSON sidecar)
+    if artifact_dir:
+        artifact_data = {
+            "packages": [
+                {
+                    "package": package,
+                    "version": str(ve["version"]),
+                    "source-location": ve["source-location"],
+                    "sha256": ve["sha256"],
+                    "added": ve["added"],
+                    **{k: ve[k] for k in ("directory", "readme") if k in ve},
+                }
+                for ve in new_entries
+            ]
+        }
+        json_dest = os.path.join(artifact_dir, f"{package}.json")
+        with open(json_dest, "w") as f:
+            json.dump(artifact_data, f, indent=2)
+        messages.append(f"  wrote artifact {json_dest}")
+
+    return True, messages, [summary_file]
+
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("submission_files", nargs="+", help="Submission YAML files to process")
+    parser.add_argument("submission_files", nargs="+", help="Submission or summary YAML files to process")
     parser.add_argument("--models-dir", default="fcc_models")
     parser.add_argument("--dry-run", action="store_true", help="Validate only; do not write")
-    parser.add_argument("--artifact-dir", default=None, help="Write resolved submission YAMLs here")
+    parser.add_argument("--artifact-dir", default=None, help="Write resolved YAMLs/JSON here")
+    parser.add_argument("--base-ref", default=None, help="Git ref for the before-state (used for summary immutability checks)")
     parser.add_argument(
         "--output-format",
         choices=["text", "markdown"],
@@ -247,7 +395,12 @@ def main():
     report_lines = []
 
     for sfile in args.submission_files:
-        ok, messages, updated = process_file(args.models_dir, sfile, args.dry_run, args.artifact_dir)
+        if os.path.basename(sfile).startswith("summary_"):
+            ok, messages, updated = process_summary_file(
+                args.models_dir, sfile, args.dry_run, args.artifact_dir, args.base_ref
+            )
+        else:
+            ok, messages, updated = process_file(args.models_dir, sfile, args.dry_run, args.artifact_dir)
         all_ok = all_ok and ok
         all_updated_summaries.extend(updated)
 
