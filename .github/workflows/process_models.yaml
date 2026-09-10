@@ -39,7 +39,7 @@ jobs:
                   | grep -v 'fcc_models/summary_' || true)
 
           if [ -z "$FILES" ]; then
-            echo "No submission files changed. Nothing to do."
+            echo "No submission files changed."
             echo "submission_files=" >> $GITHUB_OUTPUT
           else
             echo "Changed submission files:"
@@ -48,9 +48,27 @@ jobs:
             echo "submission_files=$FILES_SPACE" >> $GITHUB_OUTPUT
           fi
 
+      - name: Find changed summary files
+        id: changed_summaries
+        run: |
+          BASE=${{ github.event.before }}
+          HEAD=${{ github.sha }}
+
+          FILES=$(git diff --name-only --diff-filter=AM "$BASE" "$HEAD" -- 'fcc_models/summary_*.yml' || true)
+
+          if [ -z "$FILES" ]; then
+            echo "No summary files changed."
+            echo "summary_files=" >> $GITHUB_OUTPUT
+          else
+            echo "Changed summary files:"
+            echo "$FILES"
+            FILES_SPACE=$(echo "$FILES" | tr '\n' ' ')
+            echo "summary_files=$FILES_SPACE" >> $GITHUB_OUTPUT
+          fi
+
       - name: Look up associated PR
         id: pr
-        if: steps.changed.outputs.submission_files != ''
+        if: steps.changed.outputs.submission_files != '' || steps.changed_summaries.outputs.summary_files != ''
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -64,7 +82,7 @@ jobs:
           fi
 
       - name: Prepare artifact directory
-        if: steps.changed.outputs.submission_files != ''
+        if: steps.changed.outputs.submission_files != '' || steps.changed_summaries.outputs.summary_files != ''
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -89,8 +107,17 @@ jobs:
             --artifact-dir /tmp/model-artifact \
             ${{ steps.changed.outputs.submission_files }}
 
+      - name: Process new versions in summary files
+        if: steps.changed_summaries.outputs.summary_files != ''
+        run: |
+          python .github/scripts/process_models.py \
+            --models-dir fcc_models \
+            --artifact-dir /tmp/model-artifact \
+            --base-ref ${{ github.event.before }} \
+            ${{ steps.changed_summaries.outputs.summary_files }}
+
       - name: Print artifact contents
-        if: steps.changed.outputs.submission_files != ''
+        if: steps.changed.outputs.submission_files != '' || steps.changed_summaries.outputs.summary_files != ''
         run: |
           echo "=== Artifact files ==="
           ls -l /tmp/model-artifact/
@@ -103,7 +130,7 @@ jobs:
           done
 
       - name: Commit summary updates and remove submission files
-        if: steps.changed.outputs.submission_files != ''
+        if: steps.changed.outputs.submission_files != '' || steps.changed_summaries.outputs.summary_files != ''
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -122,7 +149,7 @@ jobs:
           fi
 
       - name: Upload model artifact
-        if: steps.changed.outputs.submission_files != ''
+        if: steps.changed.outputs.submission_files != '' || steps.changed_summaries.outputs.summary_files != ''
         uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.pr.outputs.artifact_name }}
