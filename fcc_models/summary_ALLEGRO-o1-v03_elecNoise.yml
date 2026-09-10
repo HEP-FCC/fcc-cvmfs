@@ -1,0 +1,8 @@
+package: ALLEGRO-o1-v03_elecNoise
+versions:
+- version: '1.0'
+  source-location:
+  - https://fccsw.web.cern.ch/fccsw/filesForSimDigiReco/ALLEGRO/ALLEGRO_o1_v03/elecNoise_ecalBarrelFCCee_theta.root
+  sha256:
+  - 09525492f5667397e931053a2b3017ece45984476d573266c9fb21a1412ed77e
+  added: '2026-09-10T18:26:20+00:00'
