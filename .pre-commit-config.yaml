@@ -1,0 +1,13 @@
+ci:
+  autofix_prs: false   # this hook has nothing to auto-fix
+
+repos:
+  - repo: local
+    hooks:
+      - id: validate-fcc-models
+        name: Validate FCC model submissions
+        language: python
+        additional_dependencies: [pyyaml]
+        entry: python .github/scripts/process_models.py --dry-run --models-dir fcc_models
+        files: ^fcc_models/(?!summary_)[^/]+\.yml$
+        pass_filenames: true
