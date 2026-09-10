@@ -1,0 +1,14 @@
+package: ALLEGRO-o1-v03_neighbours_map
+versions:
+- version: '1.0'
+  source-location:
+  - https://fccsw.web.cern.ch/fccsw/filesForSimDigiReco/ALLEGRO/ALLEGRO_o1_v03/neighbours_map_ecalB_thetamodulemerged.root
+  - https://fccsw.web.cern.ch/fccsw/filesForSimDigiReco/ALLEGRO/ALLEGRO_o1_v03/neighbours_map_ecalE_turbine.root
+  - https://fccsw.web.cern.ch/fccsw/filesForSimDigiReco/ALLEGRO/ALLEGRO_o1_v03/neighbours_map_ecalB_thetamodulemerged_hcalB_hcalEndcap_phitheta.root
+  - https://fccsw.web.cern.ch/fccsw/filesForSimDigiReco/ALLEGRO/ALLEGRO_o1_v03/neighbours_map_ecalB_thetamodulemerged_ecalE_turbine_hcalB_hcalEndcap_phitheta.root
+  sha256:
+  - 53624985338881828e47fd0e0296c42c1550364dfdcfa487587ef2fe395c901c
+  - 765ac0f60353ad9f0df8b34ad08a6df7680fcfc5c554e0f33f02283892067b1a
+  - 188e52047cda9ad6d6f30a8a2323f2214337e6058c3ccd1145ff2256bba0f844
+  - f5c8d3438f9aa0b7218360ce371cdeb3b70c9a1caa7666fee3c158802ab3b589
+  added: '2026-09-10T00:40:24+00:00'
