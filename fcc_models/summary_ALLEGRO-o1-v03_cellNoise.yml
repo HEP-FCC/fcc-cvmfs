@@ -1,0 +1,14 @@
+package: ALLEGRO-o1-v03_cellNoise
+versions:
+- version: '1.0'
+  source-location:
+  - https://fccsw.web.cern.ch/fccsw/filesForSimDigiReco/ALLEGRO/ALLEGRO_o1_v03/cellNoise_map_electronicsNoiseLevel_ecalB_thetamodulemerged.root
+  - https://fccsw.web.cern.ch/fccsw/filesForSimDigiReco/ALLEGRO/ALLEGRO_o1_v03/cellNoise_map_electronicsNoiseLevel_ecalB_thetamodulemerged_hcalB_thetaphi.root
+  - https://fccsw.web.cern.ch/fccsw/filesForSimDigiReco/ALLEGRO/ALLEGRO_o1_v03/cellNoise_map_endcapTurbine_electronicsNoiseLevel.root
+  - https://fccsw.web.cern.ch/fccsw/filesForSimDigiReco/ALLEGRO/ALLEGRO_o1_v03/cellNoise_map_electronicsNoiseLevel_ecalB_ECalBarrelModuleThetaMerged_ecalE_ECalEndcapTurbine_hcalB_HCalBarrelReadout_hcalE_HCalEndcapReadout.root
+  sha256:
+  - 7496cbf8f802aeef2dc56994ecf112b1ed0f38405c3f3c67f955a01c7f2ac0e5
+  - 50fcba0696baac449e3944e5b37a921a41a0c3ede2697f237052fe9282367350
+  - f008080df4ecb9fed09b5e23da66144883348a1790501781bbf6ecfe614e35b9
+  - 71961f7bb2b9408647b87c8f1931182e74020e7b2c099b5e1065dd47645c376b
+  added: '2026-09-10T23:15:57+00:00'
