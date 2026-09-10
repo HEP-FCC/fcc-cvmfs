@@ -1,0 +1,8 @@
+package: ALLEGRO-o1-v03_xtalk
+versions:
+- version: '1.0'
+  source-location:
+  - https://fccsw.web.cern.ch/fccsw/filesForSimDigiReco/ALLEGRO/ALLEGRO_o1_v03/xtalk_neighbours_map_ecalB_thetamodulemerged.root
+  sha256:
+  - 0ff5981a9fa6d12ff9fdb06b4588f3427a4ae618727c2a8f54080371a4362663
+  added: '2026-09-10T18:50:38+00:00'
