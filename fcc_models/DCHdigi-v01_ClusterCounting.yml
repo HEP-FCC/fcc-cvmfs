@@ -1,3 +1,4 @@
+# reprocess: the summary push for PR #11 was rejected
 packages:
   - package: DCHdigi-v01_ClusterCounting
     version: "1.0"
