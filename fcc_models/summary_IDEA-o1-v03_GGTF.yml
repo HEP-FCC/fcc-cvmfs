@@ -1,0 +1,8 @@
+package: IDEA-o1-v03_GGTF
+versions:
+- version: '1.0'
+  source-location:
+  - https://fccsw.web.cern.ch/fccsw/filesForSimDigiReco/IDEA/IDEA_o1_v03/SimpleGatrIDEAv3o1.onnx
+  sha256:
+  - 1670987ca5effc6962063e5c9d54910175b9ecb948cd348e3acf768c911a0805
+  added: '2026-10-30T13:51:39+00:00'
