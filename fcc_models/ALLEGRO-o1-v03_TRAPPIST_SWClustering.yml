@@ -1,3 +1,4 @@
+# reprocess: the summary push for PR #7 was rejected
 packages:
   - package: ALLEGRO-o1-v03_TRAPPIST_SWClustering
     version: "1.0"
