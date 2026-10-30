@@ -145,7 +145,18 @@ jobs:
             PR_NUM="${{ steps.pr.outputs.number }}"
             [ -n "$PR_NUM" ] && COMMIT_MSG="$COMMIT_MSG from PR #$PR_NUM"
             git commit -m "$COMMIT_MSG"
-            git push
+
+            # main may have moved since checkout (another merge, or that
+            # merge's summary commit), so rebase and retry the push
+            for attempt in 1 2 3 4 5; do
+              if git pull --rebase origin main && git push origin HEAD:main; then
+                exit 0
+              fi
+              git rebase --abort 2>/dev/null || true
+              sleep $((attempt * 5))
+            done
+            echo "Could not push the summary after 5 attempts" >&2
+            exit 1
           fi
 
       - name: Upload model artifact
