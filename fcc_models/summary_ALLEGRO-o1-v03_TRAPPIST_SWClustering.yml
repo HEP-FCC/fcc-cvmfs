@@ -1,0 +1,8 @@
+package: ALLEGRO-o1-v03_TRAPPIST_SWClustering
+versions:
+- version: '1.0'
+  source-location:
+  - https://fccsw.web.cern.ch/fccsw/filesForSimDigiReco/ALLEGRO/ALLEGRO_o1_v03/TRAPPIST_SWclustering.onnx
+  sha256:
+  - 509d5c561a9dccc6ae04a5c01cf1d210676a8f043cda9ec45befe8874107e74e
+  added: '2026-10-30T14:00:19+00:00'
