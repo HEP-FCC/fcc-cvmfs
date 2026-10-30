@@ -1,0 +1,8 @@
+package: ALLEGRO-o1-v03_TRAPPIST_TopoClustering
+versions:
+- version: '1.0'
+  source-location:
+  - https://fccsw.web.cern.ch/fccsw/filesForSimDigiReco/ALLEGRO/ALLEGRO_o1_v03/TRAPPIST_topoclustering.onnx
+  sha256:
+  - 92a7413073e7ef2f81dccfa6ef21a9e0e38c3ccc35afdf524b97b9fa8aeb69bb
+  added: '2026-10-30T14:04:11+00:00'
