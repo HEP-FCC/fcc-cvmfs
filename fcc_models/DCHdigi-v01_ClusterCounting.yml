@@ -1,0 +1,5 @@
+packages:
+  - package: DCHdigi-v01_ClusterCounting
+    version: "1.0"
+    source-location:
+      - https://fccsw.web.cern.ch/fccsw/filesForSimDigiReco/IDEA/DataAlgFORGEANT.root
