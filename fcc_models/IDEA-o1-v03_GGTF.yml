@@ -1,0 +1,5 @@
+packages:
+  - package: IDEA-o1-v03_GGTF
+    version: "1.0"
+    source-location:
+      - https://fccsw.web.cern.ch/fccsw/filesForSimDigiReco/IDEA/IDEA_o1_v03/SimpleGatrIDEAv3o1.onnx
