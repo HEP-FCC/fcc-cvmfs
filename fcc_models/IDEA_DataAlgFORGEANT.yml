@@ -1,0 +1,5 @@
+packages:
+  - package: IDEA_DataAlgFORGEANT
+    version: "1.0"
+    source-location:
+      - https://fccsw.web.cern.ch/fccsw/filesForSimDigiReco/IDEA/DataAlgFORGEANT.root
