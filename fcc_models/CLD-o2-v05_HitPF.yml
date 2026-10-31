@@ -1,0 +1,24 @@
+packages:
+  - package: CLD-o2-v05_HitPF
+    version: "1.0"
+    source-location:
+      - https://key4hep.web.cern.ch/testFiles/k4PFHitML/clustering_paper.onnx
+      - https://key4hep.web.cern.ch/testFiles/k4PFHitML/energy_correction_paper_neutral.onnx
+      - https://key4hep.web.cern.ch/testFiles/k4PFHitML/energy_correction_paper_charged_pid.onnx
+    readme: |
+      ONNX models for the machine-learning particle-flow reconstruction
+      (HitPF) of k4PFHitML: https://github.com/key4hep/k4PFHitML
+
+      Both models are trained on CLD full simulation:
+        - clustering_paper.onnx: condensation/clustering model, embeds
+          calorimeter hits and tracks for Density Peak Clustering into
+          showers. Trained on a Z->uds sample.
+        - energy_correction_paper_neutral.onnx: energy regression and PID
+          for neutral showers. Trained on a jet-like particle gun sample.
+        - energy_correction_paper_charged_pid.onnx: PID for charged showers.
+          Trained on a jet-like particle gun sample.
+
+      Used by the PFHitML algorithm via the ClusteringModelPath,
+      NeutralModelPath and ChargedModelPath properties (options/PerformMLPF.py:
+      --onnx_model_clustering, --onnx_model_properties_neutral,
+      --onnx_model_properties_charged).
