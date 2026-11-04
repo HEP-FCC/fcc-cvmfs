@@ -1,4 +1,6 @@
-package: ALLEGRO-o1-v03_xtalk
+package: xtalk
+category: ALLEGRO
+subcategory: o1-v03
 versions:
 - version: '1.0'
   source-location:
