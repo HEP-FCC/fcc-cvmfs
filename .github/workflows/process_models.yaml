@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'fcc_models/*.yml'
+      - 'fcc_models/**/*.yml'
 
 jobs:
   process-models:
@@ -34,9 +35,9 @@ jobs:
           BASE=${{ github.event.before }}
           HEAD=${{ github.sha }}
 
-          # yml files added or modified in fcc_models/ that are not summary files
-          FILES=$(git diff --name-only --diff-filter=AM "$BASE" "$HEAD" -- 'fcc_models/*.yml' \
-                  | grep -v 'fcc_models/summary_' || true)
+          # yml files added or modified in fcc_models/ (any depth) that are not summary files
+          FILES=$(git diff --name-only --diff-filter=AM "$BASE" "$HEAD" -- 'fcc_models/' \
+                  | grep '\.yml$' | grep -v '/summary_' || true)
 
           if [ -z "$FILES" ]; then
             echo "No submission files changed."
@@ -54,7 +55,8 @@ jobs:
           BASE=${{ github.event.before }}
           HEAD=${{ github.sha }}
 
-          FILES=$(git diff --name-only --diff-filter=AM "$BASE" "$HEAD" -- 'fcc_models/summary_*.yml' || true)
+          FILES=$(git diff --name-only --diff-filter=AM "$BASE" "$HEAD" -- 'fcc_models/' \
+                  | grep '/summary_.*\.yml$' || true)
 
           if [ -z "$FILES" ]; then
             echo "No summary files changed."

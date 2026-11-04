@@ -8,8 +8,10 @@ Create a YAML file (any name, e.g. `my-submission.yml`) with a `packages` list:
 
 ```yaml
 packages:
-  # Single file
+  # Single file — category required, subcategory optional
   - package: my-onnx-model
+    category: ALLEGRO        # detector or top-level group
+    subcategory: o1-v03      # geometry version (omit if not applicable)
     version: "1.0"
     source-location: http://example.com/my-onnx-model-1.0.root
     readme: |
@@ -20,6 +22,8 @@ packages:
 
   # Multiple files (downloaded individually)
   - package: another-model
+    category: IDEA
+    subcategory: o1-v03
     version: "2.3"
     source-location:
       - http://example.com/another-model-2.3.onnx
@@ -27,6 +31,7 @@ packages:
 
   # Optional: place files in a subdirectory within the version directory
   - package: delphes-card-fcc
+    category: Delphes
     version: "4.0"
     source-location: http://example.com/delphes-card-fcc-4.0.tcl
     directory: /cards
@@ -38,8 +43,9 @@ Open a pull request. A workflow will automatically validate your submission and 
 
 **Rules:**
 - The `summary_` prefix is reserved — do not use it for submission files.
-- Each `package` + `version` combination must be unique across all submissions.
-- All three fields (`package`, `version`, `source-location`) are required for every entry.
+- Each `package` + `category` + `subcategory` + `version` combination must be unique.
+- `package`, `version`, `source-location`, and `category` are required for every entry.
+- `subcategory` is optional; omit it when there is no meaningful version subdivision.
 
 ## What happens on merge
 
@@ -59,6 +65,11 @@ python fcc_models/new_version.py <package> <new-version>
 
 This copies the source URLs from the most recent version in the summary file and appends a new entry. The workflow fills in the checksums and timestamp on merge. Commit `fcc_models/summary_<package>.yml` and open a PR.
 
+## Directory structure
+
+Summary files live under `fcc_models/<category>/[<subcategory>/]summary_<package>.yml`.
+For example, `ALLEGRO/o1-v03/summary_capacitances.yml` or `Delphes/summary_card-fcc.yml`.
+
 ## Summary files
 
-`summary_<package>.yml` files are the permanent record of what is on CVMFS. They are append-only: existing version entries must never be modified or removed. New versions may be added via PR (using `new_version.py` or by editing the file directly). Each version entry records `source-location`, `sha256` (mirroring the structure of `source-location` — a string for a single file, a list for multiple), and `added` (UTC datetime of download).
+`summary_<package>.yml` files are the permanent record of what is on CVMFS. They are append-only: existing version entries must never be modified or removed. New versions may be added via PR (using `new_version.py` or by editing the file directly). Each summary file records the `package`, `category`, and optional `subcategory` at the top level, and each version entry records `source-location`, `sha256` (mirroring the structure of `source-location` — a string for a single file, a list for multiple), and `added` (UTC datetime of download).

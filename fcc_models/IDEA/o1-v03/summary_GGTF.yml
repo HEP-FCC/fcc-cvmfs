@@ -1,4 +1,6 @@
-package: IDEA-o1-v03_GGTF
+package: GGTF
+category: IDEA
+subcategory: o1-v03
 versions:
 - version: '1.0'
   source-location:

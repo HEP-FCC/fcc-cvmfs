@@ -25,7 +25,7 @@ import urllib.error
 import argparse
 import yaml
 
-REQUIRED_FIELDS = {"package", "version", "source-location"}
+REQUIRED_FIELDS = {"package", "version", "source-location", "category"}
 
 
 def load_yaml(path):
@@ -33,8 +33,10 @@ def load_yaml(path):
         return yaml.safe_load(f)
 
 
-def summary_path(models_dir, package_name):
-    return os.path.join(models_dir, f"summary_{package_name}.yml")
+def summary_path(models_dir, package_name, category, subcategory=None):
+    if subcategory:
+        return os.path.join(models_dir, category, subcategory, f"summary_{package_name}.yml")
+    return os.path.join(models_dir, category, f"summary_{package_name}.yml")
 
 
 def normalize_sources(entry):
@@ -63,6 +65,11 @@ def validate_entry(entry, source_file):
     src = entry["source-location"]
     if not isinstance(src, (str, list)) or (isinstance(src, list) and not src):
         return f"{source_file}: `source-location` must be a URL string or a non-empty list of URLs"
+    if not isinstance(entry.get("category"), str) or not entry["category"].strip():
+        return f"{source_file}: `category` must be a non-empty string"
+    subcategory = entry.get("subcategory")
+    if subcategory is not None and (not isinstance(subcategory, str) or not subcategory.strip()):
+        return f"{source_file}: `subcategory` must be a non-empty string when present"
     if "readme" in entry and not isinstance(entry["readme"], str):
         return f"{source_file}: `readme` must be a string"
     if "directory" in entry and not isinstance(entry["directory"], str):
@@ -74,7 +81,7 @@ def check_duplicate(models_dir, entry, source_file):
     """Return an error string if the version already exists in the summary, else None."""
     package = entry["package"]
     version = str(entry["version"])
-    spath = summary_path(models_dir, package)
+    spath = summary_path(models_dir, package, entry["category"], entry.get("subcategory"))
     if os.path.exists(spath):
         summary = load_yaml(spath)
         existing = [str(v["version"]) for v in summary.get("versions", [])]
@@ -86,9 +93,9 @@ def check_duplicate(models_dir, entry, source_file):
     return None
 
 
-def get_inherited_readme(models_dir, package):
+def get_inherited_readme(models_dir, entry):
     """Return readme from the most recent version in the summary, or None."""
-    spath = summary_path(models_dir, package)
+    spath = summary_path(models_dir, entry["package"], entry["category"], entry.get("subcategory"))
     if not os.path.exists(spath):
         return None
     summary = load_yaml(spath)
@@ -102,12 +109,19 @@ def update_summary(models_dir, entry, sha256_info, added):
     """Append the entry to its summary file, creating it if needed."""
     package = entry["package"]
     version = str(entry["version"])
-    spath = summary_path(models_dir, package)
+    category = entry["category"]
+    subcategory = entry.get("subcategory")
+    spath = summary_path(models_dir, package, category, subcategory)
+
+    os.makedirs(os.path.dirname(spath), exist_ok=True)
 
     if os.path.exists(spath):
         summary = load_yaml(spath)
     else:
-        summary = {"package": package, "versions": []}
+        summary = {"package": package, "category": category}
+        if subcategory:
+            summary["subcategory"] = subcategory
+        summary["versions"] = []
 
     record = {
         "version": version,
@@ -166,7 +180,7 @@ def process_file(models_dir, submission_file, dry_run, artifact_dir=None):
         # Inherit readme from most recent summary version when not specified
         for entry in entries:
             if "readme" not in entry:
-                inherited = get_inherited_readme(models_dir, entry["package"])
+                inherited = get_inherited_readme(models_dir, entry)
                 if inherited:
                     entry["readme"] = inherited
                     messages.append(f"  inherited readme for {entry['package']} v{entry['version']}")
@@ -238,6 +252,23 @@ def _git_show(ref, path):
     return result.stdout if result.returncode == 0 else None
 
 
+def _category_subcategory_from_path(models_dir, summary_file):
+    """
+    Derive (category, subcategory) from the file's location relative to models_dir.
+
+    Expects either:
+      <models_dir>/<category>/summary_<pkg>.yml          → (category, None)
+      <models_dir>/<category>/<subcategory>/summary_<pkg>.yml → (category, subcategory)
+    """
+    rel = os.path.relpath(summary_file, models_dir).replace("\\", "/")
+    parts = rel.split("/")
+    if len(parts) == 2:
+        return parts[0], None
+    if len(parts) == 3:
+        return parts[0], parts[1]
+    return None, None
+
+
 def process_summary_file(models_dir, summary_file, dry_run, artifact_dir=None, base_ref=None):
     """
     Handle a directly-edited summary file.
@@ -248,6 +279,12 @@ def process_summary_file(models_dir, summary_file, dry_run, artifact_dir=None, b
 
     Returns (ok: bool, messages: list[str], updated_summaries: list[str])
     """
+    category, subcategory = _category_subcategory_from_path(models_dir, summary_file)
+    if category is None:
+        return False, [
+            f"{summary_file}: must be under <models_dir>/<category>/[<subcategory>/]summary_<pkg>.yml"
+        ], []
+
     current = load_yaml(summary_file)
     if not isinstance(current, dict) or "versions" not in current:
         return False, [f"{summary_file}: must have a top-level 'versions' list"], []
@@ -257,6 +294,18 @@ def process_summary_file(models_dir, summary_file, dry_run, artifact_dir=None, b
     if package != expected:
         return False, [
             f"{summary_file}: 'package' field {package!r} does not match filename (expected {expected!r})"
+        ], []
+
+    # Validate that category/subcategory fields in the file match the directory
+    if current.get("category", category) != category:
+        return False, [
+            f"{summary_file}: 'category' field {current['category']!r} does not match "
+            f"directory ({category!r})"
+        ], []
+    if subcategory and current.get("subcategory", subcategory) != subcategory:
+        return False, [
+            f"{summary_file}: 'subcategory' field {current['subcategory']!r} does not match "
+            f"directory ({subcategory!r})"
         ], []
 
     current_versions = current.get("versions", [])
@@ -296,9 +345,12 @@ def process_summary_file(models_dir, summary_file, dry_run, artifact_dir=None, b
     for ve in new_entries:
         synthetic = {
             "package": package,
+            "category": category,
             "version": ve.get("version", ""),
             "source-location": ve.get("source-location", ""),
         }
+        if subcategory:
+            synthetic["subcategory"] = subcategory
         for k in ("directory", "readme"):
             if k in ve:
                 synthetic[k] = ve[k]
@@ -358,6 +410,8 @@ def process_summary_file(models_dir, summary_file, dry_run, artifact_dir=None, b
             "packages": [
                 {
                     "package": package,
+                    "category": category,
+                    **( {"subcategory": subcategory} if subcategory else {} ),
                     "version": str(ve["version"]),
                     "source-location": ve["source-location"],
                     "sha256": ve["sha256"],
@@ -367,7 +421,8 @@ def process_summary_file(models_dir, summary_file, dry_run, artifact_dir=None, b
                 for ve in new_entries
             ]
         }
-        json_dest = os.path.join(artifact_dir, f"{package}.json")
+        stem = f"{category}_{subcategory}_{package}" if subcategory else f"{category}_{package}"
+        json_dest = os.path.join(artifact_dir, f"{stem}.json")
         with open(json_dest, "w") as f:
             json.dump(artifact_data, f, indent=2)
         messages.append(f"  wrote artifact {json_dest}")

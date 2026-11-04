@@ -1,4 +1,6 @@
-package: ALLEGRO-o1-v03_TRAPPIST_SWClustering
+package: TRAPPIST_SWClustering
+category: ALLEGRO
+subcategory: o1-v03
 versions:
 - version: '1.0'
   source-location:

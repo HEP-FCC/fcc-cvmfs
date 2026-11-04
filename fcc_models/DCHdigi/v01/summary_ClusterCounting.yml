@@ -1,4 +1,6 @@
-package: DCHdigi-v01_ClusterCounting
+package: ClusterCounting
+category: DCHdigi
+subcategory: v01
 versions:
 - version: '1.0'
   source-location:
