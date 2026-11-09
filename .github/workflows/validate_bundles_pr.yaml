@@ -97,13 +97,24 @@ jobs:
                   if result.returncode != 0:
                       listing = f"ERROR: {result.stderr}"
                   else:
-                      lines = []
+                      parsed = []
                       for ln in result.stdout.splitlines():
                           p = ln.split()
                           if len(p) < 4:
                               continue
                           size = p[2] if "/" in p[1] else p[4]
-                          lines.append(f"{p[0]}  {int(size):>10}  {p[-1]}")
+                          parsed.append((p[0], int(size), p[-1]))
+                      tops = set(n.split("/")[0] for _, _, n in parsed if n)
+                      prefix = (tops.pop() + "/") if len(tops) == 1 else ""
+                      lines = []
+                      for perms, sz, name in parsed:
+                          if prefix:
+                              if name.rstrip("/") == prefix.rstrip("/"):
+                                  continue
+                              if name.startswith(prefix):
+                                  name = name[len(prefix):]
+                          if name:
+                              lines.append(f"{perms}  {sz:>10}  {name}")
                       listing = "\n".join(lines) + "\n"
                   out_lines.append(
                       f"\n<details>\n<summary>📦 {name} — tar listing "
