@@ -1,0 +1,143 @@
+name: Validate Production Bundle PR
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'production_bundles/*.yml'
+      - 'production_bundles/**/*.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Find changed submission files
+        id: changed
+        run: |
+          FILES=$(git diff --name-only \
+            ${{ github.event.pull_request.base.sha }} \
+            ${{ github.event.pull_request.head.sha }} \
+            -- 'production_bundles/' \
+            | grep '\.yml$' | grep -v '/summary_' || true)
+
+          if [ -z "$FILES" ]; then
+            echo "No submission files changed."
+            echo "submission_files=" >> $GITHUB_OUTPUT
+          else
+            echo "Changed submission files: $FILES"
+            echo "submission_files=$(echo "$FILES" | tr '\n' ' ')" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set up Python
+        if: steps.changed.outputs.submission_files != ''
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        if: steps.changed.outputs.submission_files != ''
+        run: pip install pyyaml
+
+      - name: Validate and generate tar listings
+        if: steps.changed.outputs.submission_files != ''
+        env:
+          SUBMISSION_FILES: ${{ steps.changed.outputs.submission_files }}
+        run: |
+          mkdir -p /tmp/pr-check
+
+          # Validation (dry-run) — markdown output
+          python .github/scripts/process_bundles.py \
+            --dry-run \
+            --models-dir production_bundles \
+            --output-format markdown \
+            $SUBMISSION_FILES \
+            > /tmp/pr-check/validation.md 2>&1 || true
+
+          # Tar listings for local sources
+          python3 -I - <<'PYEOF'
+          import json, os, subprocess, sys
+          import yaml
+
+          submission_files = os.environ.get("SUBMISSION_FILES", "").split()
+          out_lines = []
+
+          for sfile in submission_files:
+              if not os.path.exists(sfile):
+                  continue
+              with open(sfile) as f:
+                  data = yaml.safe_load(f) or {}
+              for entry in data.get("bundles", []):
+                  src = entry.get("source-location", "")
+                  if not isinstance(src, str) or "://" in src:
+                      continue
+                  # Reject path traversal
+                  if os.path.isabs(src) or ".." in src.replace("\\", "/").split("/"):
+                      continue
+                  local_path = os.path.join("production_bundles", src)
+                  name = f"{entry.get('bundle', '?')} v{entry.get('version', '?')}"
+                  fname = os.path.basename(local_path)
+                  if not os.path.exists(local_path):
+                      out_lines.append(f"\n> ⚠️ Local tarball not found: `{local_path}`\n")
+                      continue
+                  result = subprocess.run(["tar", "-tvf", local_path],
+                                          capture_output=True, text=True)
+                  listing = result.stdout if result.returncode == 0 else f"ERROR: {result.stderr}"
+                  out_lines.append(
+                      f"\n<details>\n<summary>📦 {name} — tar listing "
+                      f"(<code>{fname}</code>)</summary>\n\n"
+                      f"```\n{listing}```\n\n</details>\n"
+                  )
+
+          if out_lines:
+              with open("/tmp/pr-check/listings.md", "w") as f:
+                  f.writelines(out_lines)
+          PYEOF
+
+      - name: Post or update PR comment
+        if: steps.changed.outputs.submission_files != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Build comment body from validation output + listings
+          {
+            echo "<!-- fcc-bundles-validation -->"
+            cat /tmp/pr-check/validation.md
+            if [ -f /tmp/pr-check/listings.md ]; then
+              echo ""
+              echo "---"
+              cat /tmp/pr-check/listings.md
+            fi
+          } > /tmp/pr-check/comment.md
+
+          PR_NUM=${{ github.event.pull_request.number }}
+          REPO=${{ github.repository }}
+
+          # Write a JSON payload so multiline body is escaped correctly
+          python3 -c "
+          import json
+          body = open('/tmp/pr-check/comment.md').read()
+          print(json.dumps({'body': body}))
+          " > /tmp/pr-check/patch.json
+
+          # Update existing bot comment if present, otherwise create a new one
+          COMMENT_ID=$(gh api "repos/$REPO/issues/$PR_NUM/comments" \
+            --jq '[.[] | select(.body | startswith("<!-- fcc-bundles-validation -->")) | .id][0] // ""' \
+            2>/dev/null || echo "")
+
+          if [ -n "$COMMENT_ID" ]; then
+            gh api "repos/$REPO/issues/comments/$COMMENT_ID" \
+              -X PATCH --input /tmp/pr-check/patch.json > /dev/null
+            echo "Updated existing comment $COMMENT_ID"
+          else
+            gh pr comment "$PR_NUM" --body-file /tmp/pr-check/comment.md
+            echo "Posted new comment"
+          fi
