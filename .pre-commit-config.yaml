@@ -4,10 +4,10 @@ ci:
 repos:
   - repo: local
     hooks:
-      - id: validate-fcc-models
-        name: Validate FCC model submissions and summary files
+      - id: validate-fcc-data
+        name: Validate FCC data submissions and summary files
         language: python
         additional_dependencies: [pyyaml]
-        entry: python .github/scripts/process_models.py --dry-run --models-dir fcc_models --base-ref HEAD
-        files: ^fcc_models/[^/]+\.yml$
+        entry: python .github/scripts/process_data.py --dry-run --models-dir fcc_data --base-ref HEAD
+        files: ^fcc_data/[^/]+\.yml$
         pass_filenames: true

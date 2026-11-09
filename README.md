@@ -6,11 +6,11 @@ Inspired by [vre-hub/escape-cvmfs](https://github.com/vre-hub/escape-cvmfs/tree/
 
 ## Contents
 
-### FCC Models ([`fcc_models/`](fcc_models/))
+### FCC Data ([`fcc_data/`](fcc_data/))
 
-Tracks data files (ONNX models, Delphes cards, etc.) available on the FCC CVMFS repository. To register a new model version, add a YAML submission file to `fcc_models/` and open a pull request. A validation check runs automatically on every PR; once merged, the summary registry is updated and the submission file is removed.
+Tracks data files (ONNX models, Delphes cards, etc.) available on the FCC CVMFS repository. To register a new version, add a YAML submission file to `fcc_data/` and open a pull request. A validation check runs automatically on every PR; once merged, the summary registry is updated and the submission file is removed.
 
-See [`fcc_models/README.md`](fcc_models/README.md) for the file format and full submission instructions.
+See [`fcc_data/README.md`](fcc_data/README.md) for the file format and full submission instructions.
 
 ### Rucio clients ([`rucio/`](rucio/))
 
