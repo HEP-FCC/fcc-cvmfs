@@ -94,7 +94,17 @@ jobs:
                       continue
                   result = subprocess.run(["tar", "-tvf", local_path],
                                           capture_output=True, text=True)
-                  listing = result.stdout if result.returncode == 0 else f"ERROR: {result.stderr}"
+                  if result.returncode != 0:
+                      listing = f"ERROR: {result.stderr}"
+                  else:
+                      lines = []
+                      for ln in result.stdout.splitlines():
+                          p = ln.split()
+                          if len(p) < 4:
+                              continue
+                          size = p[2] if "/" in p[1] else p[4]
+                          lines.append(f"{p[0]}  {int(size):>10}  {p[-1]}")
+                      listing = "\n".join(lines) + "\n"
                   out_lines.append(
                       f"\n<details>\n<summary>📦 {name} — tar listing "
                       f"(<code>{fname}</code>)</summary>\n\n"
