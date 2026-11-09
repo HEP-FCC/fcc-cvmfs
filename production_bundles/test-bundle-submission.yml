@@ -1,8 +1,0 @@
-bundles:
-  - bundle: test-bundle
-    category: test
-    version: "1.0"
-    source-location: test-bundle-1.0.tar.gz
-    readme: |
-      Minimal smoke-test bundle for the production_bundles workflow.
-      Contains README.md, config.json, and a small binary payload.
