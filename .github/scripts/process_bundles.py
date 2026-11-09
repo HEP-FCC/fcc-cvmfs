@@ -98,6 +98,8 @@ def validate_entry(entry, source_file):
     if not isinstance(src, (str, list)) or (isinstance(src, list) and not src):
         return f"{source_file}: `source-location` must be a URL string, a non-empty list of URLs, or a local tarball filename"
     if isinstance(src, str) and is_local_source(src):
+        if os.path.isabs(src) or ".." in src.replace("\\", "/").split("/"):
+            return f"{source_file}: local `source-location` must not be an absolute path or contain '..'"
         if not any(src.endswith(ext) for ext in TARBALL_EXTENSIONS):
             return (
                 f"{source_file}: local `source-location` must be a tarball "
