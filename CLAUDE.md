@@ -7,6 +7,10 @@ Based on the original [vre-hub/escape-cvmfs](https://github.com/vre-hub/escape-c
 ## Repository structure
 
 ```
+fcc_data/                     # Data file registry (ONNX models, Delphes cards, etc.)
+  README.md                   # Submission instructions and file format
+  <category>/[<subcategory>/]
+    summary_<package>.yml     # Permanent append-only record of each registered package
 rucio/                        # Rucio clients tarball builder
   config.yaml                 # Default Rucio version (single source of truth)
   make_tarball.sh             # Builds the rucio-clients tarball
@@ -17,6 +21,9 @@ rucio/                        # Rucio clients tarball builder
       setup.sh                # Sourced by users to set up the Rucio environment
 .github/workflows/
   build_rucio_tarball.yaml    # CI: builds the tarball and uploads it as an artifact
+  process_data.yaml           # CI: validates/checksums fcc_data submissions on merge
+.github/scripts/
+  process_data.py             # Logic for process_data.yaml
 ```
 
 ## Key facts

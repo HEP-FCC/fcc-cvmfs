@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Process fcc_models package YAML files on PR merge (or dry-run on PR open).
+Process fcc_data package YAML files on PR merge (or dry-run on PR open).
 
 Each submission file contains a `packages` list. For each entry:
   - Validates required fields are present
@@ -433,7 +433,7 @@ def process_summary_file(models_dir, summary_file, dry_run, artifact_dir=None, b
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("submission_files", nargs="+", help="Submission or summary YAML files to process")
-    parser.add_argument("--models-dir", default="fcc_models")
+    parser.add_argument("--models-dir", default="fcc_data")
     parser.add_argument("--dry-run", action="store_true", help="Validate only; do not write")
     parser.add_argument("--artifact-dir", default=None, help="Write resolved YAMLs/JSON here")
     parser.add_argument("--base-ref", default=None, help="Git ref for the before-state (used for summary immutability checks)")
@@ -472,9 +472,9 @@ def main():
 
     if args.output_format == "markdown":
         header = (
-            "### FCC Models — validation passed ✅"
+            "### FCC Data — validation passed ✅"
             if all_ok
-            else "### FCC Models — validation failed ❌"
+            else "### FCC Data — validation failed ❌"
         )
         note = (
             "_On merge: summaries will be updated and submission files removed._"

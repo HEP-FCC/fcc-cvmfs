@@ -1,4 +1,4 @@
-# FCC Models
+# FCC Data
 
 This directory tracks data files available on the FCC CVMFS repository.
 
@@ -60,14 +60,14 @@ Open a pull request. A workflow will automatically validate your submission and 
 Use `new_version.py` to avoid writing the YAML by hand:
 
 ```bash
-python fcc_models/new_version.py <package> <new-version>
+python fcc_data/new_version.py <package> <new-version>
 ```
 
-This copies the source URLs from the most recent version in the summary file and appends a new entry. The workflow fills in the checksums and timestamp on merge. Commit `fcc_models/summary_<package>.yml` and open a PR.
+This copies the source URLs from the most recent version in the summary file and appends a new entry. The workflow fills in the checksums and timestamp on merge. Commit `fcc_data/summary_<package>.yml` and open a PR.
 
 ## Directory structure
 
-Summary files live under `fcc_models/<category>/[<subcategory>/]summary_<package>.yml`.
+Summary files live under `fcc_data/<category>/[<subcategory>/]summary_<package>.yml`.
 For example, `ALLEGRO/o1-v03/summary_capacitances.yml` or `Delphes/summary_card-fcc.yml`.
 
 ## Summary files
