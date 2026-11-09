@@ -23,9 +23,13 @@ jobs:
       - name: Find changed submission files
         id: changed
         run: |
+          # Use merge-base rather than base.sha so this survives a force-push
+          # to main (e.g. the history rewrite that removes local tarballs after
+          # a production_bundles merge).  base.sha may no longer exist after
+          # the rewrite; merge-base always finds the true fork point.
+          BASE=$(git merge-base HEAD origin/main)
           FILES=$(git diff --name-only \
-            ${{ github.event.pull_request.base.sha }} \
-            ${{ github.event.pull_request.head.sha }} \
+            "$BASE" HEAD \
             -- 'production_bundles/' \
             | grep '\.yml$' | grep -v '/summary_' || true)
 
