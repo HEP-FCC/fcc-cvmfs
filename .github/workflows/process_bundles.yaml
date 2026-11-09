@@ -167,10 +167,13 @@ jobs:
         if: steps.process_submission.outputs.local_tarballs != ''
         run: |
           pip install git-filter-repo
+          REPO_URL="https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
           for tarball in ${{ steps.process_submission.outputs.local_tarballs }}; do
             echo "Rewriting history to remove $tarball"
             git filter-repo --path "$tarball" --invert-paths --force
           done
+          # git filter-repo removes the origin remote; re-add it before pushing
+          git remote add origin "$REPO_URL"
           for attempt in 1 2 3 4 5; do
             if git push --force origin HEAD:main; then
               exit 0
