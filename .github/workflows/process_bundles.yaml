@@ -1,0 +1,190 @@
+name: Process Production Bundles
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'production_bundles/*.yml'
+      - 'production_bundles/**/*.yml'
+
+jobs:
+  process-bundles:
+    # Skip commits made by the bot itself (summary updates + file deletions)
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # needed to push the updated summary files back
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: pip install pyyaml
+
+      - name: Find changed submission files
+        id: changed
+        run: |
+          BASE=${{ github.event.before }}
+          HEAD=${{ github.sha }}
+
+          # yml files added or modified in production_bundles/ (any depth) that are not summary files
+          FILES=$(git diff --name-only --diff-filter=AM "$BASE" "$HEAD" -- 'production_bundles/' \
+                  | grep '\.yml$' | grep -v '/summary_' || true)
+
+          if [ -z "$FILES" ]; then
+            echo "No submission files changed."
+            echo "submission_files=" >> $GITHUB_OUTPUT
+          else
+            echo "Changed submission files:"
+            echo "$FILES"
+            FILES_SPACE=$(echo "$FILES" | tr '\n' ' ')
+            echo "submission_files=$FILES_SPACE" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Find changed summary files
+        id: changed_summaries
+        run: |
+          BASE=${{ github.event.before }}
+          HEAD=${{ github.sha }}
+
+          FILES=$(git diff --name-only --diff-filter=AM "$BASE" "$HEAD" -- 'production_bundles/' \
+                  | grep '/summary_.*\.yml$' || true)
+
+          if [ -z "$FILES" ]; then
+            echo "No summary files changed."
+            echo "summary_files=" >> $GITHUB_OUTPUT
+          else
+            echo "Changed summary files:"
+            echo "$FILES"
+            FILES_SPACE=$(echo "$FILES" | tr '\n' ' ')
+            echo "summary_files=$FILES_SPACE" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Look up associated PR
+        id: pr
+        if: steps.changed.outputs.submission_files != '' || steps.changed_summaries.outputs.summary_files != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_NUMBER=$(gh api "repos/${{ github.repository }}/commits/${{ github.sha }}/pulls" \
+            --jq '.[0].number // ""' 2>/dev/null || echo "")
+          echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          if [ -n "$PR_NUMBER" ]; then
+            echo "artifact_name=production-bundles-pr-$PR_NUMBER" >> $GITHUB_OUTPUT
+          else
+            echo "artifact_name=production-bundles-${{ github.sha }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Prepare artifact directory
+        if: steps.changed.outputs.submission_files != '' || steps.changed_summaries.outputs.summary_files != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/bundles-artifact
+          # Fetch PR body and write as pr.txt (Python handles multi-line content safely)
+          gh api "repos/${{ github.repository }}/commits/${{ github.sha }}/pulls" \
+            > /tmp/pr_data.json 2>/dev/null || echo "[]" > /tmp/pr_data.json
+          python3 -c "
+          import json
+          with open('/tmp/pr_data.json') as f:
+              prs = json.load(f)
+          body = prs[0].get('body', '') if prs else ''
+          with open('/tmp/bundles-artifact/pr.txt', 'w') as f:
+              f.write(body or '')
+          "
+
+      - name: Validate and update summaries
+        id: process_submission
+        if: steps.changed.outputs.submission_files != ''
+        run: |
+          python .github/scripts/process_bundles.py \
+            --models-dir production_bundles \
+            --artifact-dir /tmp/bundles-artifact \
+            ${{ steps.changed.outputs.submission_files }}
+
+      - name: Process new versions in summary files
+        id: process_summaries
+        if: steps.changed_summaries.outputs.summary_files != ''
+        run: |
+          python .github/scripts/process_bundles.py \
+            --models-dir production_bundles \
+            --artifact-dir /tmp/bundles-artifact \
+            --base-ref ${{ github.event.before }} \
+            ${{ steps.changed_summaries.outputs.summary_files }}
+
+      - name: Print artifact contents
+        if: steps.changed.outputs.submission_files != '' || steps.changed_summaries.outputs.summary_files != ''
+        run: |
+          echo "=== Artifact files ==="
+          ls -l /tmp/bundles-artifact/
+          echo ""
+          for f in /tmp/bundles-artifact/*.yml /tmp/bundles-artifact/*.txt /tmp/bundles-artifact/pr.txt; do
+            [ -f "$f" ] || continue
+            echo "=== $f ==="
+            cat "$f"
+            echo ""
+          done
+
+      - name: Commit summary updates and remove submission files
+        if: steps.changed.outputs.submission_files != '' || steps.changed_summaries.outputs.summary_files != ''
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Stage new/updated summaries, submission file deletions, and any removed local tarballs
+          git add production_bundles/
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            COMMIT_MSG="chore: process bundle submissions"
+            PR_NUM="${{ steps.pr.outputs.number }}"
+            [ -n "$PR_NUM" ] && COMMIT_MSG="$COMMIT_MSG from PR #$PR_NUM"
+            git commit -m "$COMMIT_MSG"
+
+            # main may have moved since checkout (another merge, or that
+            # merge's summary commit), so rebase and retry the push
+            for attempt in 1 2 3 4 5; do
+              if git pull --rebase origin main && git push origin HEAD:main; then
+                exit 0
+              fi
+              git rebase --abort 2>/dev/null || true
+              sleep $((attempt * 5))
+            done
+            echo "Could not push the summary after 5 attempts" >&2
+            exit 1
+          fi
+
+      - name: Rewrite history to remove local tarballs
+        if: steps.process_submission.outputs.local_tarballs != ''
+        run: |
+          pip install git-filter-repo
+          for tarball in ${{ steps.process_submission.outputs.local_tarballs }}; do
+            echo "Rewriting history to remove $tarball"
+            git filter-repo --path "$tarball" --invert-paths --force
+          done
+          for attempt in 1 2 3 4 5; do
+            if git push --force origin HEAD:main; then
+              exit 0
+            fi
+            sleep $((attempt * 5))
+          done
+          echo "Could not force-push after history rewrite" >&2
+          exit 1
+
+      - name: Upload bundle artifact
+        if: steps.changed.outputs.submission_files != '' || steps.changed_summaries.outputs.summary_files != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.pr.outputs.artifact_name }}
+          path: /tmp/bundles-artifact/
+          if-no-files-found: error
+          retention-days: 90

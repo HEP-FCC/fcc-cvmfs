@@ -11,6 +11,10 @@ fcc_data/                     # Data file registry (ONNX models, Delphes cards, 
   README.md                   # Submission instructions and file format
   <category>/[<subcategory>/]
     summary_<package>.yml     # Permanent append-only record of each registered package
+production_bundles/           # Production software bundle registry (tar archives)
+  README.md                   # Submission instructions and file format
+  <category>/[<subcategory>/]
+    summary_<bundle>.yml      # Permanent append-only record of each registered bundle
 rucio/                        # Rucio clients tarball builder
   config.yaml                 # Default Rucio version (single source of truth)
   make_tarball.sh             # Builds the rucio-clients tarball
@@ -22,8 +26,10 @@ rucio/                        # Rucio clients tarball builder
 .github/workflows/
   build_rucio_tarball.yaml    # CI: builds the tarball and uploads it as an artifact
   process_data.yaml           # CI: validates/checksums fcc_data submissions on merge
+  process_bundles.yaml        # CI: validates/checksums production_bundles submissions on merge
 .github/scripts/
   process_data.py             # Logic for process_data.yaml
+  process_bundles.py          # Logic for process_bundles.yaml (supports local tarballs + tar listings)
 ```
 
 ## Key facts
