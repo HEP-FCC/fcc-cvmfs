@@ -1,0 +1,25 @@
+package: CLD-o2-v05_HitPF
+category: CLD
+subcategory: o2-v05
+versions:
+- version: '1.0'
+  source-location:
+  - https://key4hep.web.cern.ch/testFiles/k4PFHitML/clustering_paper.onnx
+  - https://key4hep.web.cern.ch/testFiles/k4PFHitML/energy_correction_paper_neutral.onnx
+  - https://key4hep.web.cern.ch/testFiles/k4PFHitML/energy_correction_paper_charged_pid.onnx
+  sha256:
+  - 5306c28f3c992b50199e6a6dd12bd563a218af13e485a3e81728236a345f9bd6
+  - 7bfb92a7fffca7dd1b113579e65efba660183d854acdfef70cc069d5a0d2300a
+  - bb416188ad4d53f7f1df341cc183ae38bbe0fad6da8cb9bf72b4843fc2a391e7
+  added: '2026-11-09T16:34:59+00:00'
+  readme: "ONNX models for the machine-learning particle-flow reconstruction\n(HitPF)\
+    \ of k4PFHitML: https://github.com/key4hep/k4PFHitML\n\nBoth models are trained\
+    \ on CLD full simulation:\n  - clustering_paper.onnx: condensation/clustering\
+    \ model, embeds\n    calorimeter hits and tracks for Density Peak Clustering into\n\
+    \    showers. Trained on a Z->uds sample.\n  - energy_correction_paper_neutral.onnx:\
+    \ energy regression and PID\n    for neutral showers. Trained on a jet-like particle\
+    \ gun sample.\n  - energy_correction_paper_charged_pid.onnx: PID for charged showers.\n\
+    \    Trained on a jet-like particle gun sample.\n\nUsed by the PFHitML algorithm\
+    \ via the ClusteringModelPath,\nNeutralModelPath and ChargedModelPath properties\
+    \ (options/PerformMLPF.py:\n--onnx_model_clustering, --onnx_model_properties_neutral,\n\
+    --onnx_model_properties_charged).\n"
