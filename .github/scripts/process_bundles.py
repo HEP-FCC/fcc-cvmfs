@@ -58,19 +58,37 @@ def is_local_source(src):
 
 
 def _format_tar_listing(raw):
-    """Reformat raw tar -tvf output to: <permissions>  <size>  <file>."""
-    lines = []
+    """Reformat raw tar -tvf output to: <permissions>  <size>  <file>.
+
+    Strips a single common top-level directory from all names, mirroring
+    the extract_tarball() stripping logic so the listing matches what
+    actually lands on CVMFS.
+    """
+    parsed = []
     for line in raw.splitlines():
         parts = line.split()
         # GNU tar: perms user/group size date time name  (6+ fields)
         # BSD tar: perms nlinks user group size ...  name  (9 fields)
-        # Either way $1=perms, last=name; size is $3 on GNU, $5 on BSD.
         if len(parts) < 4:
             continue
         perms = parts[0]
         name  = parts[-1]
         size  = parts[2] if "/" in parts[1] else parts[4]
-        lines.append(f"{perms}  {int(size):>10}  {name}")
+        parsed.append((perms, int(size), name))
+
+    # Strip single top-level directory if all entries share one
+    tops = set(n.split("/")[0] for _, _, n in parsed if n)
+    prefix = (tops.pop() + "/") if len(tops) == 1 else ""
+
+    lines = []
+    for perms, size, name in parsed:
+        if prefix:
+            if name.rstrip("/") == prefix.rstrip("/"):
+                continue  # skip the top-level dir entry itself
+            if name.startswith(prefix):
+                name = name[len(prefix):]
+        if name:
+            lines.append(f"{perms}  {size:>10}  {name}")
     return "\n".join(lines) + "\n"
 
 
