@@ -57,12 +57,29 @@ def is_local_source(src):
     return isinstance(src, str) and "://" not in src
 
 
+def _format_tar_listing(raw):
+    """Reformat raw tar -tvf output to: <permissions>  <size>  <file>."""
+    lines = []
+    for line in raw.splitlines():
+        parts = line.split()
+        # GNU tar: perms user/group size date time name  (6+ fields)
+        # BSD tar: perms nlinks user group size ...  name  (9 fields)
+        # Either way $1=perms, last=name; size is $3 on GNU, $5 on BSD.
+        if len(parts) < 4:
+            continue
+        perms = parts[0]
+        name  = parts[-1]
+        size  = parts[2] if "/" in parts[1] else parts[4]
+        lines.append(f"{perms}  {int(size):>10}  {name}")
+    return "\n".join(lines) + "\n"
+
+
 def get_tar_listing(path):
-    """Return verbose listing of a tarball as a string."""
+    """Return a compact listing of a tarball: permissions, size, filename."""
     result = subprocess.run(["tar", "-tvf", path], capture_output=True, text=True)
     if result.returncode != 0:
         raise RuntimeError(f"tar -tvf failed for {path}: {result.stderr.strip()}")
-    return result.stdout
+    return _format_tar_listing(result.stdout)
 
 
 def download_file(url, dest_dir):
