@@ -10,3 +10,12 @@ versions:
     Contains README.md, config.json, and a small binary payload.
 
     '
+- version: '1.1'
+  source-location: test-bundle-1.1.tar.gz
+  sha256: 0112fecbba7ef0af8e8c81948905600d5a1742080062f078d64720383c57c233
+  added: '2026-11-09T15:51:14+00:00'
+  readme: 'Second smoke-test bundle to verify the fixed history-rewrite workflow.
+
+    Contains README.md and config.json.
+
+    '

@@ -1,8 +1,0 @@
-bundles:
-  - bundle: test-bundle
-    category: test
-    version: "1.1"
-    source-location: test-bundle-1.1.tar.gz
-    readme: |
-      Second smoke-test bundle to verify the fixed history-rewrite workflow.
-      Contains README.md and config.json.
