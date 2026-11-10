@@ -1,0 +1,10 @@
+bundles:
+  - bundle: FCCConfig_CLD
+    release: "2026-04-08"
+    version: r2025-11-07
+    source-location: fccconfigcld-r2025-11-07.tgz
+    readme: |
+      CLD reconstruction configuration files for release r2025-11-07,
+      deployed for FCC stack release 2026-04-08.
+      Includes Pandora settings, CaloDigi, tracking, particle flow,
+      high-level reco, and steering scripts for CLD full simulation.
