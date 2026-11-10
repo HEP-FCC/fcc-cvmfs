@@ -31,7 +31,7 @@ import urllib.error
 import argparse
 import yaml
 
-REQUIRED_FIELDS = {"bundle", "version", "source-location", "category"}
+REQUIRED_FIELDS = {"bundle", "release", "version", "source-location"}
 TARBALL_EXTENSIONS = (".tar.gz", ".tgz", ".tar.bz2", ".tar.xz")
 
 
@@ -40,10 +40,8 @@ def load_yaml(path):
         return yaml.safe_load(f)
 
 
-def summary_path(models_dir, bundle_name, category, subcategory=None):
-    if subcategory:
-        return os.path.join(models_dir, category, subcategory, f"summary_{bundle_name}.yml")
-    return os.path.join(models_dir, category, f"summary_{bundle_name}.yml")
+def summary_path(models_dir, bundle_name):
+    return os.path.join(models_dir, f"summary_{bundle_name}.yml")
 
 
 def normalize_sources(entry):
@@ -140,11 +138,8 @@ def validate_entry(entry, source_file):
                 f"{source_file}: local `source-location` must be a tarball "
                 f"({', '.join(TARBALL_EXTENSIONS)})"
             )
-    if not isinstance(entry.get("category"), str) or not entry["category"].strip():
-        return f"{source_file}: `category` must be a non-empty string"
-    subcategory = entry.get("subcategory")
-    if subcategory is not None and (not isinstance(subcategory, str) or not subcategory.strip()):
-        return f"{source_file}: `subcategory` must be a non-empty string when present"
+    if not isinstance(entry.get("release"), str) or not entry["release"].strip():
+        return f"{source_file}: `release` must be a non-empty string"
     if "readme" in entry and not isinstance(entry["readme"], str):
         return f"{source_file}: `readme` must be a string"
     if "directory" in entry and not isinstance(entry["directory"], str):
@@ -153,24 +148,25 @@ def validate_entry(entry, source_file):
 
 
 def check_duplicate(models_dir, entry, source_file):
-    """Return an error string if the version already exists in the summary, else None."""
+    """Return an error string if the (release, version) already exists in the summary, else None."""
     bundle = entry["bundle"]
+    release = entry["release"]
     version = str(entry["version"])
-    spath = summary_path(models_dir, bundle, entry["category"], entry.get("subcategory"))
+    spath = summary_path(models_dir, bundle)
     if os.path.exists(spath):
         summary = load_yaml(spath)
-        existing = [str(v["version"]) for v in summary.get("versions", [])]
-        if version in existing:
-            return (
-                f"{source_file}: version {version!r} of bundle {bundle!r} "
-                f"already exists in {spath}"
-            )
+        for v in summary.get("versions", []):
+            if str(v.get("release", "")) == release and str(v["version"]) == version:
+                return (
+                    f"{source_file}: version {version!r} of release {release!r} of bundle {bundle!r} "
+                    f"already exists in {spath}"
+                )
     return None
 
 
 def get_inherited_readme(models_dir, entry):
     """Return readme from the most recent version in the summary, or None."""
-    spath = summary_path(models_dir, entry["bundle"], entry["category"], entry.get("subcategory"))
+    spath = summary_path(models_dir, entry["bundle"])
     if not os.path.exists(spath):
         return None
     summary = load_yaml(spath)
@@ -183,22 +179,19 @@ def get_inherited_readme(models_dir, entry):
 def update_summary(models_dir, entry, sha256_info, added):
     """Append the entry to its summary file, creating it if needed."""
     bundle = entry["bundle"]
+    release = entry["release"]
     version = str(entry["version"])
-    category = entry["category"]
-    subcategory = entry.get("subcategory")
-    spath = summary_path(models_dir, bundle, category, subcategory)
+    spath = summary_path(models_dir, bundle)
 
     os.makedirs(os.path.dirname(spath), exist_ok=True)
 
     if os.path.exists(spath):
         summary = load_yaml(spath)
     else:
-        summary = {"bundle": bundle, "category": category}
-        if subcategory:
-            summary["subcategory"] = subcategory
-        summary["versions"] = []
+        summary = {"bundle": bundle, "versions": []}
 
     record = {
+        "release": release,
         "version": version,
         "source-location": entry["source-location"],
         "sha256": sha256_info,
@@ -347,7 +340,7 @@ def process_file(models_dir, submission_file, dry_run, artifact_dir=None):
             src_display = sources[0] if len(sources) == 1 else f"{len(sources)} files"
             local = " [local]" if len(sources) == 1 and is_local_source(sources[0]) else ""
             messages.append(
-                f"  OK: {entry['bundle']} v{entry['version']} ({src_display}{local})"
+                f"  OK: {entry['bundle']} {entry['release']} v{entry['version']} ({src_display}{local})"
             )
 
     return True, messages, updated_summaries, local_tarballs_removed
@@ -362,16 +355,6 @@ def _git_show(ref, path):
     return result.stdout if result.returncode == 0 else None
 
 
-def _category_subcategory_from_path(models_dir, summary_file):
-    rel = os.path.relpath(summary_file, models_dir).replace("\\", "/")
-    parts = rel.split("/")
-    if len(parts) == 2:
-        return parts[0], None
-    if len(parts) == 3:
-        return parts[0], parts[1]
-    return None, None
-
-
 def process_summary_file(models_dir, summary_file, dry_run, artifact_dir=None, base_ref=None):
     """
     Handle a directly-edited summary file (append-only new versions only).
@@ -379,10 +362,10 @@ def process_summary_file(models_dir, summary_file, dry_run, artifact_dir=None, b
 
     Returns (ok, messages, updated_summaries, local_tarballs_removed=[])
     """
-    category, subcategory = _category_subcategory_from_path(models_dir, summary_file)
-    if category is None:
+    rel = os.path.relpath(summary_file, models_dir).replace("\\", "/")
+    if "/" in rel:
         return False, [
-            f"{summary_file}: must be under <models_dir>/<category>/[<subcategory>/]summary_<bundle>.yml"
+            f"{summary_file}: must be directly under <models_dir>/ as summary_<bundle>.yml"
         ], [], []
 
     current = load_yaml(summary_file)
@@ -396,19 +379,12 @@ def process_summary_file(models_dir, summary_file, dry_run, artifact_dir=None, b
             f"{summary_file}: 'bundle' field {bundle!r} does not match filename (expected {expected!r})"
         ], [], []
 
-    if current.get("category", category) != category:
-        return False, [
-            f"{summary_file}: 'category' field {current['category']!r} does not match "
-            f"directory ({category!r})"
-        ], [], []
-    if subcategory and current.get("subcategory", subcategory) != subcategory:
-        return False, [
-            f"{summary_file}: 'subcategory' field {current['subcategory']!r} does not match "
-            f"directory ({subcategory!r})"
-        ], [], []
-
     current_versions = current.get("versions", [])
-    current_by_ver = {str(v["version"]): v for v in current_versions}
+
+    def _ver_key(v):
+        return (str(v.get("release", "")), str(v["version"]))
+
+    current_by_key = {_ver_key(v): v for v in current_versions}
 
     old_versions = []
     if base_ref:
@@ -416,24 +392,24 @@ def process_summary_file(models_dir, summary_file, dry_run, artifact_dir=None, b
         if old_text:
             old_data = yaml.safe_load(old_text) or {}
             old_versions = old_data.get("versions", [])
-    old_by_ver = {str(v["version"]): v for v in old_versions}
+    old_by_key = {_ver_key(v): v for v in old_versions}
 
     errors = []
-    for ver_str, old_entry in old_by_ver.items():
-        if ver_str not in current_by_ver:
+    for key, old_entry in old_by_key.items():
+        if key not in current_by_key:
             errors.append(
-                f"{summary_file}: existing version {ver_str!r} was removed — "
+                f"{summary_file}: existing entry {key!r} was removed — "
                 "summary files are append-only"
             )
-        elif current_by_ver[ver_str] != old_entry:
+        elif current_by_key[key] != old_entry:
             errors.append(
-                f"{summary_file}: existing version {ver_str!r} was modified — "
+                f"{summary_file}: existing entry {key!r} was modified — "
                 "summary files are append-only"
             )
     if errors:
         return False, errors, [], []
 
-    new_entries = [v for v in current_versions if str(v["version"]) not in old_by_ver]
+    new_entries = [v for v in current_versions if _ver_key(v) not in old_by_key]
     if not new_entries:
         return True, [f"{summary_file}: no new versions found (nothing to do)"], [], []
 
@@ -446,12 +422,10 @@ def process_summary_file(models_dir, summary_file, dry_run, artifact_dir=None, b
             )
         synthetic = {
             "bundle": bundle,
-            "category": category,
+            "release": ve.get("release", ""),
             "version": ve.get("version", ""),
             "source-location": src,
         }
-        if subcategory:
-            synthetic["subcategory"] = subcategory
         for k in ("directory", "readme"):
             if k in ve:
                 synthetic[k] = ve[k]
@@ -467,7 +441,9 @@ def process_summary_file(models_dir, summary_file, dry_run, artifact_dir=None, b
         for ve in new_entries:
             sources = normalize_sources({"source-location": ve["source-location"]})
             src_display = sources[0] if len(sources) == 1 else f"{len(sources)} files"
-            messages.append(f"  OK (new): {bundle} v{ve['version']} ({src_display})")
+            messages.append(
+                f"  OK (new): {bundle} {ve['release']} v{ve['version']} ({src_display})"
+            )
         return True, messages, [], []
 
     if artifact_dir:
@@ -501,7 +477,7 @@ def process_summary_file(models_dir, summary_file, dry_run, artifact_dir=None, b
         else:
             ve["sha256"] = [url_checksums[u] for u in src]
         ve["added"] = added
-        messages.append(f"  filled in sha256/added for {bundle} v{ve['version']}")
+        messages.append(f"  filled in sha256/added for {bundle} {ve['release']} v{ve['version']}")
 
     with open(summary_file, "w") as f:
         yaml.dump(current, f, default_flow_style=False, sort_keys=False)
@@ -511,8 +487,7 @@ def process_summary_file(models_dir, summary_file, dry_run, artifact_dir=None, b
             "bundles": [
                 {
                     "bundle": bundle,
-                    "category": category,
-                    **( {"subcategory": subcategory} if subcategory else {} ),
+                    "release": str(ve["release"]),
                     "version": str(ve["version"]),
                     "source-location": ve["source-location"],
                     "sha256": ve["sha256"],
@@ -522,8 +497,7 @@ def process_summary_file(models_dir, summary_file, dry_run, artifact_dir=None, b
                 for ve in new_entries
             ]
         }
-        stem = f"{category}_{subcategory}_{bundle}" if subcategory else f"{category}_{bundle}"
-        json_dest = os.path.join(artifact_dir, f"{stem}.json")
+        json_dest = os.path.join(artifact_dir, f"{bundle}.json")
         with open(json_dest, "w") as f:
             json.dump(artifact_data, f, indent=2)
         messages.append(f"  wrote artifact {json_dest}")

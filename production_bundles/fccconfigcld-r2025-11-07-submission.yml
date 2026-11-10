@@ -1,6 +1,6 @@
 bundles:
-  - bundle: fccconfigcld-r2025-11-07
-    category: CLD
+  - bundle: FCCConfig_CLD
+    release: r2025-11-07
     version: "1.0"
     source-location: fccconfigcld-r2025-11-07.tgz
     readme: |
