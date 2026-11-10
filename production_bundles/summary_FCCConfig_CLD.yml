@@ -1,0 +1,14 @@
+bundle: FCCConfig_CLD
+versions:
+- release: r2025-11-07
+  version: '1.0'
+  source-location: fccconfigcld-r2025-11-07.tgz
+  sha256: c4ed6e1b9ba35229babe32100832aee307d59fcfac70c8ef616e171fba935435
+  added: '2026-11-10T10:37:34+00:00'
+  readme: 'CLD reconstruction configuration files for release r2025-11-07.
+
+    Includes Pandora settings, CaloDigi, tracking, particle flow,
+
+    high-level reco, and steering scripts for CLD full simulation.
+
+    '
