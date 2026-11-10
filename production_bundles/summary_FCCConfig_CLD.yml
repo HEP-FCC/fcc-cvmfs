@@ -12,3 +12,17 @@ versions:
     high-level reco, and steering scripts for CLD full simulation.
 
     '
+- release: '2026-04-08'
+  version: r2025-11-07
+  source-location: fccconfigcld-r2025-11-07.tgz
+  sha256: c4ed6e1b9ba35229babe32100832aee307d59fcfac70c8ef616e171fba935435
+  added: '2026-11-10T15:29:53+00:00'
+  readme: 'CLD reconstruction configuration files for release r2025-11-07,
+
+    deployed for FCC stack release 2026-04-08.
+
+    Includes Pandora settings, CaloDigi, tracking, particle flow,
+
+    high-level reco, and steering scripts for CLD full simulation.
+
+    '
