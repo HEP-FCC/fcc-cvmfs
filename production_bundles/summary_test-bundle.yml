@@ -1,7 +1,7 @@
 bundle: test-bundle
-category: test
 versions:
-- version: '1.0'
+- release: test-release
+  version: '1.0'
   source-location: test-bundle-1.0.tar.gz
   sha256: 84b15d404a662f063613932a24ad24d969a4e48d17a5797d11919d802a7a72f9
   added: '2026-11-09T15:39:59+00:00'
@@ -10,7 +10,8 @@ versions:
     Contains README.md, config.json, and a small binary payload.
 
     '
-- version: '1.1'
+- release: test-release
+  version: '1.1'
   source-location: test-bundle-1.1.tar.gz
   sha256: 0112fecbba7ef0af8e8c81948905600d5a1742080062f078d64720383c57c233
   added: '2026-11-09T15:51:14+00:00'
