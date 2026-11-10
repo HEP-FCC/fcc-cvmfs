@@ -1,6 +1,6 @@
 bundles:
   - bundle: FCCConfig_CLD
-    release: 2026-04-08
+    release: "2026-04-08"
     version: r2025-11-07
     source-location: fccconfigcld-r2025-11-07.tgz
     readme: |
