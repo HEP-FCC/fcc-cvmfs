@@ -1,0 +1,7 @@
+bundles:
+  - bundle: FCCConfig_CLD
+    release: r2026-09-09
+    version: "01"
+    source-location: fccconfigcld-r2026-09-09.tgz
+    readme: |
+      Plain packaging of CLDConfig release r2026-09-09, no additions.
